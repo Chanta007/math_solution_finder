@@ -84,3 +84,19 @@ created: 2026-05-26
 ---
 
 Automated solver loop scheduling via /loop or /schedule
+
+---
+id: 09be4f302a168f
+title: Elsholtz-Tao analytic bounds + Cayley surface interpretation for Erdős–Straus
+source-path: inline:erdos-straus-hard-residue-proofs
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When algebraic approaches (Guo, Bradford) exhaust capacity and geometric structure understanding is needed
+created: 2026-05-26
+---
+
+Elsholtz-Tao analytic bounds + Cayley surface interpretation for Erdős–Straus
