@@ -100,3 +100,35 @@ created: 2026-05-26
 ---
 
 Elsholtz-Tao analytic bounds + Cayley surface interpretation for Erdős–Straus
+
+---
+id: 62a18fc7d48246
+title: FunSearch evolutionary generation for incubation stage
+source-path: inline:theory-discovery-framework
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When basic Polya-Hadamard discovery loop has completed 5+ iterations
+created: 2026-05-26
+---
+
+FunSearch evolutionary generation for incubation stage
+
+---
+id: dda6070aaf70ca
+title: Lean 4 formal verification for math domain
+source-path: inline:theory-discovery-framework
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When informal verification (sympy) hits correctness limits on math problems
+created: 2026-05-26
+---
+
+Lean 4 formal verification for math domain
