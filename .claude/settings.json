@@ -1,0 +1,6 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "python3 /Users/petermager/.claude/plugins/cache/mindcoachlabs-harness/mindcoachlabs/2.9.2/scripts/statusline.py"
+  }
+}
