@@ -1,7 +1,6 @@
 # Verify Step Registry
 
-> Status: stub — populate after the first verify run or copy from a working project
-> <!-- CUSTOMIZE: This is a placeholder. The externalized verify pipeline is deferred until the harness-review deep mode is mature. -->
+> Status: stub — populate after the first verify run. Math Solution Finder verify steps will include: pytest, mypy, ruff, convergence log schema validation.
 
 ## Intended Structure
 

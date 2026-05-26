@@ -22,9 +22,7 @@ The gap between "I need something" and "I have a useful result" should be as sho
 
 ### Security & Privacy
 
-<!-- CUSTOMIZE: Describe your application's security posture. The defaults below assume a public internet-facing application handling sensitive data. -->
-
-This is a public internet-facing application. Data privacy is absolute. Zero cross-user data leakage. Encryption at rest for sensitive fields. Personal data isolation is non-negotiable. All secrets managed per-environment (dev/staging/prod). Assume hostile actors on every endpoint.
+This is a local CLI tool — not internet-facing. Security concerns are limited to: API key protection (`.env` gitignored, never logged), safe handling of Claude API responses, and preventing accidental secret leakage in convergence logs or research archives. No user data, no multi-tenancy, no auth.
 
 ### Reliability & Observability
 
@@ -38,11 +36,9 @@ Code is written for the next developer, not the compiler. Simple over clever. Ex
 
 Architecture decisions favor horizontal scalability and operational simplicity. Prefer stateless services. Centralize configuration. Use factory patterns for swappable implementations. Design for the 10x growth scenario without over-engineering for the 100x scenario.
 
-### Mobile-First UX
+### CLI Usability
 
-<!-- CUSTOMIZE: If your application has a web UI, keep this section. Remove if API-only. -->
-
-All user-facing surfaces must work on mobile viewports (375px+). Touch targets 44px minimum. No horizontal scroll. Navigation adapts to viewport. Use `dvh` units for full-height layouts. Test on real devices, not just browser resize.
+Clear, concise CLI output. Human-readable progress on stderr, machine-parseable results on stdout. Every long-running operation shows progress indicators. Error messages include actionable next steps.
 
 ---
 
@@ -297,21 +293,15 @@ New plan templates should be created when a task type recurs more than twice. Fo
 
 ### Design Documents
 
-<!-- CUSTOMIZE: Add your project's design docs as you create them. Start with the templates in docs/design/. -->
-
 | Document | Domain |
 |----------|--------|
-| `docs/design/core-architecture.md` | Technology stack, project structure, rendering strategy |
-| `docs/design/data-model.md` | Database schema, relationships, migrations |
-| `docs/design/auth-rbac.md` | Authentication, authorization, role-based access |
-| `docs/design/api-design.md` | API conventions, endpoint patterns, error handling |
-| `docs/design/testing.md` | Test strategy, framework choices, coverage |
-| `docs/design/observability.md` | Logging, metrics, alerting, dashboards |
-| `docs/design/deployment.md` | Docker, CI/CD, environment management |
-| `docs/design/security.md` | Threat model, encryption, input validation |
-| `docs/design/ui-ux.md` | Component library, responsive design, accessibility |
-| `docs/design/mindcoachlabs-harness.md` | Skills inventory, gateway, workflow, update guide, worktree usage |
-| `docs/design/hooks-routing.md` | Hook events, routing decision tree, auto/agent timing model |
+| `docs/design/core-architecture.md` | Solver engine, agentic loop, strategy registry |
+| `docs/design/command-reference.md` | CLI commands, flags, usage patterns |
+| `docs/design/convergence-tracking.md` | Convergence logging, path tracking, JSONL schema |
+| `docs/design/config.md` | Environment variables, central config module |
+| `docs/design/testing.md` | Test strategy: unit, property-based, solver verification |
+| `docs/design/observability.md` | Structured logging, Claude API metrics |
+| `docs/design/deployment.md` | Docker, CI/CD, local installation |
 
 ### Execution Plans
 
@@ -381,14 +371,9 @@ These are the opinionated defaults that every project using this framework inher
 - **Feature flags** — Use environment variables or a feature flag service for gradual rollouts. Never use `if (isDev)` checks in business logic.
 - **Validation on startup** — The app validates all required configuration at startup and fails fast with a clear error if anything is missing.
 
-### 8.7 Web UI Standards
+### 8.7 CLI Output Standards
 
-<!-- CUSTOMIZE: Remove this section if your project has no web UI. -->
-
-- **Clean, clear interface** — Minimal chrome. Content-first. No decorative elements that don't serve function.
-- **Component library** — Use an established component library (shadcn/ui, Radix, Material UI) for consistency. Copy-paste ownership model preferred over framework dependency.
-- **Responsive by default** — Every component works on mobile (375px), tablet (768px), and desktop (1280px+).
-- **Dark mode support** — CSS custom properties or Tailwind dark mode classes. No hardcoded colors.
-- **Loading states** — Every async operation shows progress. Skeleton screens for initial loads. Inline spinners for actions.
-- **Error states** — Every error has a user-facing message. No raw error codes. Recovery actions where possible.
-- **Accessibility** — Semantic HTML. ARIA labels on interactive elements. Keyboard navigation. Color contrast ratios meet WCAG AA.
+- **Structured stderr** — JSON-formatted logs on stderr for machine consumption. Human progress indicators for interactive use.
+- **Clean stdout** — Machine-parseable results only (JSON). No decorative output mixed with data.
+- **Progress indicators** — Long-running solver loops show iteration count, elapsed time, and convergence status.
+- **Error messages** — Include the error, what was attempted, and actionable next steps. Never bare tracebacks in production mode.

@@ -1,163 +1,99 @@
 # Observability
 
-> Last updated: <!-- DATE -->
+> Last updated: May 2026
 
 ## 1. Purpose
 
-Defines the logging, metrics, alerting, and dashboard strategy. The goal is to make every production issue diagnosable without SSH access — purely through logs, metrics, and dashboards.
+Defines the logging and metrics strategy for Math Solution Finder. As a CLI tool, observability is file-based: structured JSON logs on stderr, convergence tracking in append-only JSONL files, and Claude API usage metrics embedded in convergence entries.
 
 ## 2. Key Files
 
 | File | Responsibility |
 |------|---------------|
-| <!-- e.g., `src/lib/telemetry/logger.ts` --> | Structured logging functions |
-| <!-- e.g., `src/lib/telemetry/metrics.ts` --> | Metrics (counters, histograms, gauges) |
-| <!-- e.g., `src/lib/telemetry/spans.ts` --> | Tracing / span management |
-| <!-- e.g., `terraform/alerts.tf` --> | Alert definitions (IaC) |
+| `src/math_solver/infrastructure/logging.py` | structlog configuration and formatters |
+| `src/math_solver/engine/convergence.py` | Convergence log writer (JSONL) |
+| `docs/convergence/` | Append-only solver iteration logs |
 
 ## 3. Architecture
 
 ### Observability Stack
 
-<!-- CUSTOMIZE: Choose your stack. -->
-
-**Preferred: Grafana Stack** (open-source, self-hostable, cost-effective)
 ```
-Application → OpenTelemetry SDK
-                ├─ Logs → Loki → Grafana Dashboards
-                ├─ Metrics → Prometheus → Grafana Dashboards
-                └─ Traces → Tempo → Grafana Dashboards (optional)
+CLI Application
+  ├─ Structured Logs → stderr (JSON via structlog)
+  │     └─ Pipe to file: python -m math_solver loop ... 2> solver.log
+  ├─ Convergence Logs → docs/convergence/*.jsonl (append-only, repo-tracked)
+  └─ Claude API Metrics → embedded in convergence entries (tokens, cost, latency)
 ```
 
-**Alternative: Datadog** (managed, higher cost, excellent integrations)
-```
-Application → Datadog Agent/SDK
-                ├─ Logs → Datadog Log Explorer
-                ├─ Metrics → Datadog Metrics
-                └─ APM → Datadog APM
-```
-
-### Logging Architecture
-
-```
-Business Code → logger.info/warn/error()
-                    ↓
-              Structured JSON
-              {timestamp, severity, component, operation, correlationId, ...metadata}
-                    ↓
-              Log Aggregator (Loki / Datadog / CloudWatch)
-                    ↓
-              Dashboard Queries + Alerts
-```
+No APM, no Grafana, no external metrics stack. The tool runs locally; all observability is self-contained in log files.
 
 ## 4. Structured Logging
 
-### Log Levels
+### Configuration
 
-| Level | When | Example |
-|-------|------|---------|
-| `debug` | Detailed diagnostic info (dev only) | Function entry/exit, variable values |
-| `info` | Normal operations | Request processed, job completed, cache hit |
-| `warn` | Degraded but functional | Retry needed, slow query, fallback activated |
-| `error` | Operation failed | Unhandled exception, API failure, data corruption |
+```python
+import structlog
 
-### Required Fields
-
-Every log entry MUST include:
-
-| Field | Description |
-|-------|-------------|
-| `timestamp` | ISO 8601 format |
-| `severity` | debug / info / warn / error |
-| `component` | Module name (e.g., "auth", "api", "worker") |
-| `operation` | Function or endpoint name |
-| `correlationId` | Request trace ID |
-
-### Anti-Patterns
-
-```
-// BAD: Unstructured string
-console.log("Processing user " + userId + " at " + new Date());
-
-// BAD: Silent catch
-try { await doWork(); } catch (e) { /* swallowed */ }
-
-// GOOD: Structured with context
-logger.info("User processed", { component: "auth", userId, duration_ms: 42 });
-
-// GOOD: Error with full context
-logger.error("doWork failed", { component: "worker", error: String(e), userId });
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.stdlib.BoundLogger,
+    logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+)
 ```
 
-## 5. Metrics
+### Log Entry Format
 
-### Required Metrics
+Every log entry includes:
+- **timestamp** (ISO 8601)
+- **level** (debug, info, warning, error)
+- **component** (cli, engine, strategy, llm, config)
+- **operation** (what function/step)
+- **run_id** (correlates entries within a solver run)
+- **iteration** (which solver iteration, if applicable)
 
-| Metric | Type | Labels |
-|--------|------|--------|
-| `http_request_duration_seconds` | Histogram | route, method, status |
-| `http_request_total` | Counter | route, method, status |
-| `external_api_duration_seconds` | Histogram | provider, operation |
-| `external_api_errors_total` | Counter | provider, operation, error_type |
-| `db_query_duration_seconds` | Histogram | operation, table |
-| `active_connections` | Gauge | — |
+### Example
 
-### Custom Metrics
-
-Add domain-specific metrics for your application's key operations:
-- Processing queue depth
-- AI/LLM token usage
-- Cache hit/miss rates
-- Background job completion rates
-
-## 6. Alerting
-
-### Severity Levels
-
-| Severity | Response | Channel | Examples |
-|----------|----------|---------|----------|
-| **P0** | Page immediately | PagerDuty / SMS | Service down, data loss, security breach |
-| **P1** | < 1 hour | Slack + email | Error rate spike, API degradation, auth failures |
-| **P2** | Next business day | Email / ticket | Slow queries, disk usage, dependency deprecation |
-
-### Alert Definitions
-
-Alerts are defined in infrastructure-as-code (Terraform, Pulumi), NOT in dashboard UIs:
-
-```hcl
-# Example: P1 alert for high error rate
-resource "grafana_alert_rule" "high_error_rate" {
-  name      = "P1: Error rate > 5%"
-  condition = "rate(http_errors_total[5m]) / rate(http_requests_total[5m]) > 0.05"
-  for       = "5m"
-  labels    = { severity = "P1" }
-}
+```python
+logger.info(
+    "iteration_complete",
+    component="engine",
+    run_id="run-2026-05-25",
+    iteration=5,
+    strategy="symbolic",
+    result="progress",
+    confidence=0.72,
+    duration_s=12.3,
+)
 ```
 
-### Dashboard Strategy
+## 5. Claude API Metrics
 
-| Dashboard | Purpose | Audience |
-|-----------|---------|----------|
-| Service Overview | Health at a glance (error rate, latency, throughput) | On-call engineer |
-| API Performance | Per-route latency percentiles and error rates | Backend engineer |
-| External APIs | Third-party API health and latency | Integration engineer |
-| Database | Query performance, connection pool, disk usage | DBA / backend |
+Tracked per iteration in convergence log entries:
+- `tokens_used` — total input + output tokens
+- `cost_usd` — estimated cost (computed from model pricing)
+- `duration_s` — wall-clock time for the API call
 
-## 7. Production Debugging Workflow
+Aggregate metrics (total tokens, total cost, average latency) are computed by the `report` command from convergence logs.
 
-When something breaks in production:
+## 6. Error Handling
 
-1. **Check the dashboard** — Service Overview for the big picture
-2. **Query logs** — Filter by error severity, component, time range
-3. **Correlate** — Use correlation ID to trace a single request
-4. **Check metrics** — Did latency spike? Error rate change? Queue depth grow?
-5. **Check alerts** — Was an alert already firing? What does the runbook say?
-6. **Check runbooks** — `docs/runbooks/` for known failure patterns
+All catch blocks include structured logging. No silent catches.
 
-**Never SSH to diagnose.** If you need SSH, that's a gap in observability.
+```python
+try:
+    result = await llm_client.complete(prompt)
+except anthropic.APIError as e:
+    logger.error("llm_api_error", error=str(e), component="llm", operation="complete")
+    raise
+```
 
-## 8. Cross-references
+## 7. Cross-references
 
+- Convergence log schema: `docs/design/convergence-tracking.md`
+- Core architecture: `docs/design/core-architecture.md`
 - **[CONSTRAINTS.md](../CONSTRAINTS.md)** — Observability rules (§5)
-- **[HARNESS.md](../HARNESS.md)** — Code change workflow requiring observability (§2.4)
-- **[design/deployment.md](deployment.md)** — How observability integrates with deployment

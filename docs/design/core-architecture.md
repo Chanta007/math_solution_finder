@@ -1,129 +1,139 @@
 # Core Architecture
 
-> Last updated: <!-- DATE -->
+> Last updated: May 2026
 
 ## 1. Purpose
 
-<!-- CUSTOMIZE: Describe your application in 2-3 sentences. What it does, who it's for, what makes it unique. -->
-
-Describes the foundational technology choices, project structure, rendering strategy, and deployment architecture.
+Defines the solver engine architecture for Math Solution Finder — a Python CLI tool that agentically searches for solutions to unsolved math problems through iterative solve loops, strategy selection, and convergence tracking.
 
 ## 2. Key Files
 
 | File | Responsibility |
 |------|---------------|
-| <!-- e.g., `web/next.config.ts` --> | <!-- e.g., Standalone output, security headers --> |
-| <!-- e.g., `Dockerfile` --> | <!-- e.g., Multi-stage production build --> |
-| <!-- e.g., `docker-compose.yml` --> | <!-- e.g., Local development environment --> |
-| <!-- e.g., `package.json` / `pyproject.toml` / `go.mod` --> | <!-- e.g., Dependencies and scripts --> |
+| `src/math_solver/engine/solver.py` | Main solver loop — orchestrates iterations |
+| `src/math_solver/engine/convergence.py` | Convergence detection and path tracking |
+| `src/math_solver/strategies/registry.py` | Strategy registration and selection |
+| `src/math_solver/strategies/symbolic.py` | Sympy-based symbolic solving strategy |
+| `src/math_solver/strategies/numeric.py` | Numpy-based numeric testing strategy |
+| `src/math_solver/infrastructure/llm.py` | Claude API client factory |
+| `pyproject.toml` | Dependencies, scripts, project metadata |
 
 ## 3. Technology Stack
 
-<!-- CUSTOMIZE: Replace with your actual stack. This is a best-practice starting template. -->
-
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| **Framework** | <!-- e.g., Next.js 16 (App Router) --> | <!-- e.g., Server Components by default --> |
-| **Language** | <!-- e.g., TypeScript (strict mode) --> | <!-- e.g., No `any` types --> |
-| **Database** | <!-- e.g., PostgreSQL 16 + pgvector --> | <!-- e.g., Via Prisma ORM singleton --> |
-| **ORM / Query** | <!-- e.g., Prisma, SQLAlchemy, GORM --> | |
-| **Auth** | <!-- e.g., Clerk, Auth0, custom JWT --> | <!-- e.g., Multi-org, webhooks, RBAC --> |
-| **Primary LLM** | <!-- e.g., Anthropic Claude --> | <!-- e.g., All calls via factory --> |
-| **Styling** | <!-- e.g., Tailwind CSS + shadcn/ui --> | <!-- e.g., Copy-paste owned components --> |
-| **Deployment** | Docker | Multi-stage build, standalone output |
-| **Encryption** | AES-256-GCM | All sensitive fields encrypted at rest |
-| **Observability** | <!-- Grafana or Datadog --> | Structured logging, metrics, alerting |
+| **Language** | Python 3.12+ (strict typing) | `mypy --strict` must pass |
+| **CLI** | click or argparse | Commands in `math_solver/cli/` |
+| **Math / Symbolic** | sympy | Symbolic computation and proof verification |
+| **Math / Numeric** | numpy | Numeric testing and validation |
+| **Primary LLM** | Anthropic Claude (`anthropic` SDK) | All calls via factory function |
+| **Logging** | structlog | JSON to stderr |
+| **Testing** | pytest + hypothesis | Property-based tests for math |
+| **Config** | pydantic-settings | Central typed config from `.env` |
+| **Deployment** | Docker (optional) | Local CLI is primary |
 
 ## 4. Project Structure
 
-<!-- CUSTOMIZE: Replace with your actual project structure. The pattern below is illustrative. -->
-
 ```
-project-root/
-├── docker-compose.yml          # Local dev environment
-├── docs/                       # Documentation (HARNESS framework)
-│   ├── HARNESS.md
-│   ├── CONSTRAINTS.md
-│   ├── design/                 # Domain-specific architecture specs
-│   ├── plans/                  # Execution plans
-│   └── runbooks/               # Debugging playbooks
-├── src/                        # Application source code
-│   ├── app/                    # Entry points (routes, pages, commands)
-│   ├── components/             # Reusable UI components (if applicable)
-│   ├── lib/                    # Core libraries and business logic
-│   │   ├── auth/               # Auth gateway and providers
-│   │   ├── config/             # Central configuration
-│   │   ├── db/                 # Database client and helpers
-│   │   └── telemetry/          # Logging, metrics, tracing
-│   └── types/                  # Shared type definitions
-├── tests/                      # Test suites
-├── Dockerfile                  # Multi-stage production build
-└── .env.example                # Environment variable template
-```
-
-## 5. Rendering Strategy
-
-<!-- CUSTOMIZE: This section applies to web applications. Remove or replace for CLI tools, APIs, etc. -->
-
-### Server-Side (Default)
-All page-level components render on the server. They can directly access the database, auth context, and environment variables.
-
-### Client-Side (Interactive)
-Interactive UI is separated into client components that receive server-fetched data as serialized props:
-```
-Server Component (data fetch) → serialize → Client Component (interactivity)
-```
-
-## 6. Docker Architecture
-
-### Local Development
-
-```
-docker-compose.yml
-├── db (PostgreSQL / MySQL / etc.)
-│   ├── Port: 5432
-│   ├── Volume: pgdata (persistent)
-│   └── Health check: ready
-└── app (application)
-    ├── Port: 3000
-    ├── Depends on: db (healthy)
-    └── Env: .env + .env.local
+math_solution_finder/
+├── src/
+│   └── math_solver/
+│       ├── __init__.py
+│       ├── __main__.py              # python -m math_solver entrypoint
+│       ├── cli/                     # CLI commands (solve, loop, report)
+│       │   ├── __init__.py
+│       │   ├── solve.py
+│       │   ├── loop.py
+│       │   └── report.py
+│       ├── engine/                  # Solver engine
+│       │   ├── __init__.py
+│       │   ├── solver.py            # Main agentic loop
+│       │   └── convergence.py       # Convergence detection
+│       ├── strategies/              # Solving strategies (pluggable)
+│       │   ├── __init__.py
+│       │   ├── registry.py          # Strategy registry
+│       │   ├── base.py              # Base strategy protocol
+│       │   ├── symbolic.py          # Sympy-based
+│       │   ├── numeric.py           # Numpy-based
+│       │   └── hybrid.py            # Combined approaches
+│       ├── math_core/               # Math primitives
+│       │   ├── __init__.py
+│       │   ├── expressions.py       # Expression manipulation
+│       │   └── verification.py      # Result verification
+│       ├── infrastructure/          # Cross-cutting concerns
+│       │   ├── __init__.py
+│       │   ├── llm.py               # Claude API client factory
+│       │   ├── logging.py           # structlog configuration
+│       │   └── config.py            # Central config (pydantic)
+│       └── types/                   # Shared type definitions
+│           ├── __init__.py
+│           ├── problem.py           # Problem, Approach, Result types
+│           └── convergence.py       # ConvergenceEntry, Path types
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── conftest.py
+├── docs/                            # HARNESS documentation
+│   ├── convergence/                 # Append-only solver path logs
+│   └── research/                    # Research iteration archives
+├── pyproject.toml
+├── .env.example
+└── launch_worktree.py
 ```
 
-### Production Dockerfile
-
-**Stage 1: Builder** — Install dependencies, compile, run type checks, prune dev dependencies.
-
-**Stage 2: Runner** — Non-root user, minimal runtime, copy only production artifacts with `--chown`.
-
-Key requirements:
-- Non-root user (e.g., uid 1001) for security
-- `--chown` on all runtime data directories (prevents permission errors)
-- Health check endpoint for orchestrator
-- Startup validates required environment variables
-
-## 7. Configuration
-
-### Central Config Module
-
-All environment variables are read in one place:
-```
-src/lib/config/index.ts  (or equivalent)
-```
-
-Exports typed configuration. Validated at startup. No scattered env reads.
-
-### Environment Detection
+## 5. Solver Loop Flow
 
 ```
-detectEnvironment() → "development" | "staging" | "production"
+┌─────────────────────────────────────────────────────┐
+│                    CLI Entrypoint                     │
+│         (solve, loop, report commands)               │
+└──────────────────────┬──────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────┐
+│                  Solver Engine                        │
+│  ┌─────────┐  ┌────────────┐  ┌──────────────────┐  │
+│  │ Problem  │  │  Strategy  │  │   Convergence    │  │
+│  │ Analyzer │  │  Selector  │  │    Tracker       │  │
+│  └────┬─────┘  └─────┬──────┘  └───────┬──────────┘  │
+└───────┼──────────────┼──────────────────┼─────────────┘
+        │              │                  │
+┌───────▼──────────────▼──────────────────▼─────────────┐
+│                   Strategies                           │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────────┐ │
+│  │ Symbolic  │  │ Numeric  │  │  Hybrid / Custom     │ │
+│  │ (sympy)   │  │ (numpy)  │  │  (registered)        │ │
+│  └──────────┘  └──────────┘  └──────────────────────┘ │
+└───────────────────────┬───────────────────────────────┘
+                        │
+┌───────────────────────▼───────────────────────────────┐
+│                 Infrastructure                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────┐ │
+│  │ LLM      │  │ Logger   │  │ Config   │  │ File  │ │
+│  │ Factory  │  │(structlog)│  │(pydantic)│  │  I/O  │ │
+│  └──────────┘  └──────────┘  └──────────┘  └───────┘ │
+└───────────────────────────────────────────────────────┘
 ```
 
-All environment-specific behavior branches from this function.
+### Single Iteration Flow
 
-## 8. Cross-references
+1. **Problem input** — CLI receives problem description (text or file path)
+2. **Analysis** — Claude API analyzes the problem, identifies type and known approaches
+3. **Strategy selection** — Based on analysis, select from registered strategies
+4. **Approach generation** — Claude API generates a specific approach within the selected strategy
+5. **Symbolic test** — Sympy verifies the approach symbolically (if applicable)
+6. **Numeric test** — Numpy tests with concrete values
+7. **Result evaluation** — Classify as: solved, progress, dead-end, or needs-more-iteration
+8. **Convergence log** — Append iteration result to JSONL convergence log
+9. **Loop decision** — If not solved and not converged, feed findings back to step 2
 
-- **[CONSTRAINTS.md](../CONSTRAINTS.md)** — Dependency layers and component rules
-- **[design/security.md](security.md)** — Security headers, CORS/CSRF details
-- **[design/auth-rbac.md](auth-rbac.md)** — Auth integration and access control
-- **[design/deployment.md](deployment.md)** — Docker, CI/CD, environment management
+## 6. Configuration
+
+See `docs/design/config.md` for environment variables and settings.
+
+## 7. Cross-references
+
+- CLI commands: `docs/design/command-reference.md`
+- Convergence tracking: `docs/design/convergence-tracking.md`
+- Observability: `docs/design/observability.md`
+- Testing: `docs/design/testing.md`
+- Deployment: `docs/design/deployment.md`

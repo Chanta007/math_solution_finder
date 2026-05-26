@@ -10,20 +10,20 @@ For documentation governance and content standards, see **[HARNESS.md](HARNESS.m
 
 ## 1. Core Technologies
 
-<!-- CUSTOMIZE: Replace with your project's actual technology stack. The table below is a best-practice starting point. -->
-
 These are the mandatory technologies. Do not introduce alternatives without updating this document.
 
 | Layer | Required Technology | Constraint |
 |-------|-------------------|------------|
-| Language | <!-- e.g., TypeScript (strict mode), Python 3.12+, Go 1.22+ --> | <!-- e.g., No `any` types in committed code; all exports typed --> |
-| Framework | <!-- e.g., Next.js 16, FastAPI, Django, Express --> | <!-- e.g., All pages are Server Components by default --> |
-| Database | <!-- e.g., PostgreSQL 16 + pgvector --> | <!-- e.g., All access via ORM singleton --> |
-| Auth | <!-- e.g., Clerk, Auth0, Supabase Auth, custom JWT --> | <!-- e.g., Never roll custom auth; identity in auth provider, app data in ORM --> |
-| Primary LLM | <!-- e.g., Anthropic Claude, OpenAI GPT-4 --> | <!-- e.g., All calls via factory function --> |
-| Styling | <!-- e.g., Tailwind CSS v4 + shadcn/ui --> | <!-- e.g., components/ui/ are owned copy-paste components --> |
-| Encryption | AES-256-GCM (or equivalent) | All sensitive fields encrypted at rest; encryption key required in production |
-| Deployment | Docker (standalone output) | Multi-stage build; non-root user; production images are minimal |
+| Language | Python 3.12+ (strict typing) | All functions typed; `mypy --strict` must pass |
+| CLI Framework | click or argparse | All commands in `math_solver/cli/` |
+| Math / Symbolic | sympy | Symbolic computation and proof verification |
+| Math / Numeric | numpy | Numeric testing and validation |
+| Primary LLM | Anthropic Claude (via `anthropic` SDK) | All calls via factory function in `math_solver/infrastructure/llm.py` |
+| Logging | structlog | JSON to stderr; no bare `print()` in production |
+| Testing | pytest + hypothesis | Property-based tests for math operations |
+| Linting | ruff | Check + format |
+| Type Checking | mypy (strict mode) | No `Any` types in committed code |
+| Deployment | Docker (optional) | Local CLI is primary; Docker for reproducibility |
 
 ---
 
@@ -96,24 +96,20 @@ function createService() { const db = getGlobalDB(); ... }
 
 ## 3. Dependency Layers (Strict Downward Flow)
 
-<!-- CUSTOMIZE: Adjust layers to match your project's structure. The principle is universal: higher layers depend on lower layers, never the reverse. -->
-
 ```
-PAGES/VIEWS     → Entry points (web pages, CLI commands, API consumers)
-COMPONENTS      → Reusable UI components (if applicable)
-API ROUTES      → HTTP handlers
-SERVICES        → Business logic, domain operations
-CORE            → Shared libraries (LLM, storage, messaging)
-INFRASTRUCTURE  → Auth, DB, encryption, telemetry, config
-TYPES           → Shared type definitions (importable from any layer)
+CLI ENTRYPOINTS  → Entry points (solve, loop, report commands)
+SOLVER ENGINE    → Agentic loop orchestration, convergence tracking
+STRATEGIES       → Problem-specific solving approaches (symbolic, numeric, hybrid)
+MATH CORE        → Symbolic computation (sympy), numeric testing (numpy), proof verification
+INFRASTRUCTURE   → LLM client factory, logging, config, file I/O
 ```
 
 **Rules**:
 - Higher layers may import from lower layers. Never the reverse.
-- Components never import from API routes or services (call via HTTP/RPC).
-- Core never imports from services.
+- CLI entrypoints never import from math core directly (go through solver engine).
+- Strategies never import from solver engine (they are invoked by it).
 - Infrastructure never imports from higher layers.
-- Types are importable from any layer.
+- Types (in `math_solver/types/`) are importable from any layer.
 
 ---
 
@@ -138,13 +134,10 @@ Auth → Rate Limit → Validate Input → Access Check → Business Logic → R
 
 ### Input Validation
 
-All input MUST be validated with a schema validation library at the API boundary:
-<!-- CUSTOMIZE: Choose your validation library -->
-- **TypeScript**: Zod, io-ts, or AJV
-- **Python**: Pydantic, marshmallow, or cerberus
-- **Go**: go-playground/validator or custom
+All input MUST be validated at the CLI boundary:
+- **Python**: Pydantic for structured config validation, click/argparse for CLI argument validation
 
-Never trust user input. Validate shape, types, and ranges. Sanitize strings that will be rendered in HTML.
+Never trust external input. Validate problem descriptions, file paths, and configuration values at entry points.
 
 ### Rate Limiting
 
@@ -165,16 +158,14 @@ Rate limits are configurable per-environment. Production limits are stricter tha
 
 ### 5.1 Logging
 
-**No raw console output in production code.** Use structured logging.
+**No bare `print()` in production code.** Use structured logging via `structlog`.
 
-<!-- CUSTOMIZE: Replace with your logging library -->
+```python
+# Good: Structured logging
+logger.info("iteration_complete", iteration=5, approach="symbolic", converged=False, duration_s=12.3)
 
-```
-// Good: Structured logging
-logger.info("Request processed", { component: "api", route: "/users", duration_ms: 42 });
-
-// Bad: Console output
-console.log("Request processed in 42ms");
+# Bad: Console output
+print("Iteration 5 done in 12.3s")
 ```
 
 Every log entry MUST include:
@@ -186,18 +177,10 @@ Every log entry MUST include:
 
 ### 5.2 Metrics
 
-<!-- CUSTOMIZE: Choose Grafana (Prometheus) or Datadog based on your budget and ops preferences. -->
-
-**Preferred: Grafana Stack** (Prometheus + Loki + Grafana)
-- Prometheus for metrics collection
-- Loki for log aggregation
-- Grafana for dashboards and alerting
-- Open-source, self-hostable, cost-effective
-
-**Alternative: Datadog**
-- Managed APM, logging, and metrics
-- Higher cost, lower operational burden
-- Better out-of-box integrations
+**CLI tool — no APM stack required.** Observability is file-based:
+- `structlog` JSON output to stderr (pipe to file for persistent logs)
+- Convergence logs in `docs/convergence/` (append-only JSONL, repo-tracked)
+- Claude API usage tracked per iteration in convergence logs (tokens, cost, latency)
 
 **Required metrics**:
 - Request duration (histogram, by route)
@@ -255,12 +238,7 @@ try {
 
 ### 6.2 Data Isolation (Multi-Tenant)
 
-<!-- CUSTOMIZE: If your app is single-tenant, simplify this section. -->
-
-- Every database query that touches user data MUST be scoped to the authenticated user's tenant/organization.
-- Personal data views MUST use a deterministic, role-independent query (e.g., `getUserOwnData(userId)`, not `getAllDataForAdmin()`).
-- Admin views that show cross-user data MUST be explicitly marked and access-controlled.
-- On ambiguity, show nothing — never show the wrong user's data.
+This is a single-user local CLI tool. No multi-tenancy, no user data isolation needed. The only sensitive data is the `ANTHROPIC_API_KEY` — never log, display, or write it to convergence logs.
 
 ### 6.3 Input Security
 
@@ -294,14 +272,12 @@ try {
 
 ## 7. Database Conventions
 
-### 7.1 Schema Management
+### 7.1 Data Storage
 
-<!-- CUSTOMIZE: Replace with your ORM/migration tool -->
-
-- Schema changes go through migrations (Prisma Migrate, Alembic, Flyway, etc.).
-- Never modify production schema manually. All changes via code-reviewed migrations.
-- Migrations are idempotent and rollback-safe.
-- After schema changes, regenerate ORM client if applicable.
+No database. All persistent data is file-based:
+- **Convergence logs**: `docs/convergence/` — append-only JSONL files, one per problem or run session.
+- **Research archives**: `docs/research/` — markdown artifacts from each research iteration.
+- **Deferred items**: `docs/deferred/index.md` — tracked approaches that were parked for later.
 
 ### 7.2 Query Patterns
 
@@ -394,32 +370,19 @@ Push → Lint → Test → Type Check → Build → Deploy (staging) → Smoke T
 
 ---
 
-## 10. Mobile UX Constraints
+## 10. CLI UX Conventions
 
-<!-- CUSTOMIZE: Remove this section if your project has no web UI. -->
+### 10.1 Output Conventions
 
-### 10.1 Viewport Rules
+- Human-readable progress and status on stderr
+- Machine-parseable results (JSON) on stdout
+- Exit code 0 for success, 1 for errors, 2 for usage errors
 
-- Minimum supported width: 375px (iPhone SE)
-- Touch targets: 44px minimum (per Apple HIG)
-- No horizontal scroll on any page
-- Use `dvh` (dynamic viewport height) for full-height layouts, not `vh`
-- Test on actual devices, not just browser resize
+### 10.2 Long-Running Operations
 
-### 10.2 Navigation
-
-- Responsive navigation that adapts to viewport:
-  - Mobile: hamburger menu or bottom navigation
-  - Tablet: collapsible sidebar
-  - Desktop: full sidebar or top navigation
-- Navigation state persists across page transitions
-
-### 10.3 Forms & Input
-
-- Large touch targets for form inputs
-- Appropriate input types (`type="email"`, `type="tel"`, `inputmode="numeric"`)
-- Form validation messages visible without scrolling
-- Auto-focus on first field after page load
+- Solver loops show iteration progress (iteration N/max, elapsed time, convergence status)
+- Ctrl+C gracefully saves current state to convergence log before exiting
+- `--verbose` / `-v` flag increases log detail level
 
 ---
 
@@ -429,21 +392,21 @@ Push → Lint → Test → Type Check → Build → Deploy (staging) → Smoke T
 
 All environment variables are read in ONE place and exported as typed configuration:
 
-<!-- CUSTOMIZE: Example for your language -->
+```python
+# math_solver/config.py
+from pydantic_settings import BaseSettings
 
-```
-// config.ts / config.py / config.go
-export const config = {
-  database: {
-    url: requireEnv("DATABASE_URL"),
-    poolSize: parseInt(env("DB_POOL_SIZE", "10")),
-  },
-  auth: {
-    secretKey: requireEnv("AUTH_SECRET_KEY"),
-    tokenExpiry: parseInt(env("TOKEN_EXPIRY_SECONDS", "3600")),
-  },
-  // ...
-};
+class Settings(BaseSettings):
+    anthropic_api_key: str
+    log_level: str = "INFO"
+    max_iterations: int = 10
+    convergence_dir: str = "docs/convergence"
+
+    class Config:
+        env_prefix = "MATH_SOLVER_"
+        env_file = ".env"
+
+settings = Settings()
 ```
 
 **Rules**:

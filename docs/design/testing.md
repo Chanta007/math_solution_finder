@@ -1,126 +1,139 @@
 # Testing
 
-> Last updated: <!-- DATE -->
+> Last updated: May 2026
 
 ## 1. Purpose
 
-Automated testing ensures that code changes don't break existing functionality, that business logic behaves correctly under edge cases, and that critical user flows work end-to-end. The testing strategy is optimized for highest confidence per engineer-hour: unit tests for pure functions, integration tests for API routes, E2E tests for critical flows.
+Automated testing ensures solver strategies produce correct results, the agentic loop behaves correctly under edge cases, and math operations are verified both symbolically and numerically. The strategy emphasizes property-based testing for mathematical correctness.
 
 ## 2. Key Files
 
 | File | Responsibility |
 |------|---------------|
-| <!-- e.g., `vitest.config.ts` / `pytest.ini` / `go.mod` --> | Test framework configuration |
-| <!-- e.g., `playwright.config.ts` --> | E2E test configuration (if applicable) |
-| <!-- e.g., `src/lib/**/__tests__/` --> | Unit test files |
+| `pyproject.toml` | pytest + hypothesis configuration |
+| `tests/conftest.py` | Shared fixtures (mock LLM client, sample problems) |
+| `tests/unit/` | Unit tests for math core, strategies, config |
+| `tests/integration/` | Integration tests for solver engine with mocked LLM |
 
 ## 3. Architecture
 
 ### Testing Pyramid
 
 ```
-         /   E2E    \          ~10% — Critical user flows only
-        /────────────\
-       / Integration  \        ~20% — API routes, service interactions
+       / Integration  \        ~30% — Solver loop with mocked LLM
       /────────────────\
-     /   Unit Tests     \      ~70% — Pure functions, zero mocking
-    /____________________\
+     /   Unit Tests     \      ~50% — Math operations, strategies, config
+    /────────────────────\
+   / Property-Based Tests \    ~20% — Hypothesis for math correctness
+  /________________________\
 ```
 
 ### Framework Choices
 
-<!-- CUSTOMIZE: Replace with your actual test frameworks. -->
-
 | Tool | Layer | Why |
 |------|-------|-----|
-| <!-- e.g., Vitest / pytest / go test --> | Unit + Integration | <!-- e.g., Fast, native TypeScript support --> |
-| <!-- e.g., Playwright / Cypress --> | E2E | <!-- e.g., Multi-browser, auto-wait --> |
+| pytest | Unit + Integration | Standard Python test runner, rich plugin ecosystem |
+| hypothesis | Property-based | Generates random math inputs to find edge cases |
+| pytest-mock | Mocking | Mock Claude API calls in integration tests |
 
 ## 4. Running Tests
 
-<!-- CUSTOMIZE: Replace with your actual test commands. -->
-
 ```bash
-# Unit + Integration
-# npm test / pytest / go test ./...
+# All tests
+pytest
 
 # Watch mode
-# npm run test:watch / pytest --watch
+pytest --watch
 
 # Coverage
-# npm run test:coverage / pytest --cov
+pytest --cov=math_solver
 
-# E2E
-# npm run test:e2e / playwright test
+# Property-based only
+pytest -m property
+
+# Unit only
+pytest tests/unit/
+
+# Verbose
+pytest -v
 ```
 
 ## 5. Test File Placement
 
-Tests live adjacent to source code:
+Tests mirror the source structure:
 
 ```
-src/lib/auth/
-├── gateway.ts
-├── factory.ts
-└── __tests__/
-    ├── gateway.test.ts
-    └── factory.test.ts
+tests/
+├── conftest.py
+├── unit/
+│   ├── test_convergence.py
+│   ├── test_registry.py
+│   ├── test_symbolic.py
+│   ├── test_numeric.py
+│   └── test_config.py
+├── integration/
+│   ├── test_solver_loop.py
+│   └── test_cli.py
+└── properties/
+    ├── test_math_properties.py
+    └── test_convergence_properties.py
 ```
 
 ## 6. What to Test vs. Skip
 
 | Test | Skip |
 |------|------|
-| Pure functions (converters, calculators, parsers) | Third-party UI components |
-| Business logic (validation, authorization, processing) | ORM schema (type system validates it) |
-| API route handlers (with mocked dependencies) | Content/markdown files |
-| Critical user flows (E2E) | Individual component rendering |
+| Math operations (sympy expressions, numpy calculations) | Claude API response content (mock it) |
+| Strategy selection logic | Convergence log file I/O (trust filesystem) |
+| Convergence detection algorithm | CLI argument parsing (click/argparse handles it) |
+| Config validation (missing keys, invalid values) | Exact LLM prompt wording |
 
 ## 7. Writing Tests
 
-### Unit Test Pattern
+### Unit Test Pattern (Math)
 
-```
-// Arrange
-const input = createTestInput();
-
-// Act
-const result = myFunction(input);
-
-// Assert
-expect(result).toBe(expectedOutput);
-```
-
-### Integration Test Pattern
-
-```
-// Mock external dependencies
-mock(database, "findMany", () => [testRecord]);
-mock(authGateway, "requireAuth", () => testUser);
-
-// Call the route handler
-const response = await POST(createRequest(body));
-
-// Assert response
-expect(response.status).toBe(200);
-expect(await response.json()).toEqual(expected);
+```python
+def test_symbolic_strategy_verifies_sqrt2_irrational():
+    strategy = SymbolicStrategy()
+    result = strategy.verify(
+        claim="sqrt(2) is irrational",
+        proof_steps=["assume p/q in lowest terms", "..."]
+    )
+    assert result.verified is True
 ```
 
-### Edge Cases to Always Cover
+### Property-Based Test Pattern
 
-- Empty input / zero values
-- Boundary conditions (at limits)
-- Error cases (invalid input, missing required fields)
-- Null/undefined handling
-- Concurrent access (if applicable)
+```python
+from hypothesis import given, strategies as st
+
+@given(st.integers(min_value=2, max_value=1000))
+def test_prime_factorization_roundtrip(n):
+    factors = factorize(n)
+    assert product(factors) == n
+    assert all(is_prime(f) for f in factors)
+```
+
+### Integration Test Pattern (Mocked LLM)
+
+```python
+def test_solver_loop_stops_on_solution(mock_llm):
+    mock_llm.complete.side_effect = [
+        AnalysisResponse(strategy="symbolic"),
+        ApproachResponse(approach="direct proof"),
+        EvaluationResponse(result="solved", confidence=0.99),
+    ]
+    result = run_solver_loop(problem="...", max_iterations=10)
+    assert result.status == "solved"
+    assert result.iterations == 1
+```
 
 ## 8. Pre-Commit Checklist
 
 All must pass before committing:
-1. `test` — All unit + integration tests
-2. Type checker (if applicable)
-3. Linter
-4. Build
+1. `pytest` — All tests pass
+2. `mypy src/` — Type checker clean
+3. `ruff check .` — Linter clean
 
 ## 9. Cross-references
 

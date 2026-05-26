@@ -1,177 +1,82 @@
 # Deployment
 
-> Last updated: <!-- DATE -->
+> Last updated: May 2026
 
 ## 1. Purpose
 
-Defines the deployment architecture: Docker builds, CI/CD pipeline, environment management, and zero-downtime deployment strategy.
+Defines installation, packaging, and optional Docker deployment for Math Solution Finder. The primary deployment mode is local CLI installation via pip/uv. Docker is available for reproducibility.
 
 ## 2. Key Files
 
 | File | Responsibility |
 |------|---------------|
-| `Dockerfile` | Multi-stage production build |
-| `docker-compose.yml` | Local development environment |
-| <!-- e.g., `.github/workflows/deploy.yml` --> | CI/CD pipeline |
-| <!-- e.g., `terraform/` --> | Infrastructure as Code |
+| `pyproject.toml` | Package metadata, dependencies, entry points |
+| `Dockerfile` | Optional containerized build |
+| `.github/workflows/ci.yml` | CI pipeline (lint, type-check, test) |
 
-## 3. Architecture
+## 3. Installation
 
-### Environment Strategy
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ Development  │ ──→ │   Staging   │ ──→ │ Production  │
-│ (local)      │     │ (auto-deploy│     │ (manual gate│
-│              │     │  from dev)  │     │  from main) │
-└─────────────┘     └─────────────┘     └─────────────┘
-```
-
-All environments use the **same Docker image**. Only configuration differs.
-
-### Docker Build
-
-**Multi-stage Dockerfile**:
-
-```dockerfile
-# Stage 1: Builder
-FROM node:20-alpine AS builder   # or python:3.12, golang:1.22
-WORKDIR /app
-COPY . .
-RUN npm ci && npm run build      # Install, compile, test
-RUN npm prune --production       # Remove dev dependencies
-
-# Stage 2: Runner
-FROM node:20-alpine AS runner
-RUN addgroup --system app && adduser --system --ingroup app app
-WORKDIR /app
-COPY --from=builder --chown=app:app /app/.next/standalone ./
-COPY --from=builder --chown=app:app /app/public ./public
-USER app
-EXPOSE 3000
-HEALTHCHECK CMD wget -q --spider http://localhost:3000/api/health || exit 1
-CMD ["node", "server.js"]
-```
-
-Key requirements:
-- **Non-root user** — Security best practice
-- **`--chown`** — Prevent permission errors on runtime directories
-- **Health check** — Orchestrator can verify container is ready
-- **Minimal image** — Only production artifacts, no dev tools
-
-### Local Development
+### Local (recommended)
 
 ```bash
-docker compose up --build
+# Clone and install
+git clone <repo-url>
+cd math_solution_finder
+pip install -e ".[dev]"
+# or
+uv pip install -e ".[dev]"
+
+# Configure
+cp .env.example .env
+# Edit .env to add ANTHROPIC_API_KEY
+
+# Run
+python -m math_solver solve --problem "..."
 ```
 
-The compose file includes:
-- Application service (your app)
-- Database (PostgreSQL, MySQL, etc.)
-- Cache (Redis, if needed)
-- Any dependent services
-
-### CI/CD Pipeline
-
-```
-Push to dev → Lint → Test → Type Check → Build Image → Deploy to Staging
-                                                              ↓
-Push to main → Same checks → Deploy to Production (with approval gate)
-```
-
-<!-- CUSTOMIZE: Choose your CI/CD platform. -->
-
-**GitHub Actions example**:
-```yaml
-name: Deploy
-on:
-  push:
-    branches: [dev, main]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm ci
-      - run: npm test
-      - run: npm run lint
-      - run: npm run build
-      - run: docker build -t app .
-      - run: docker push registry/app:${{ github.sha }}
-      # Deploy step depends on your hosting platform
-```
-
-## 4. Environment Configuration
-
-### Secret Management
-
-| Environment | Method |
-|-------------|--------|
-| Development | `.env.local` (gitignored) or encrypted `.env` (dotenvx/SOPS) |
-| Staging | Deployment platform env vars or secrets manager |
-| Production | Secrets manager (Vault, AWS SM, GCP SM) or encrypted env |
-
-**Rules**:
-- Never commit plaintext secrets
-- Separate keys per environment
-- Secrets injected at runtime, never baked into images
-- Rotation documented for every secret type
-
-### Required Environment Variables
-
-<!-- CUSTOMIZE: List your required env vars. -->
+### Docker (optional)
 
 ```bash
-# Database
-DATABASE_URL=postgresql://...
-
-# Auth
-# AUTH_SECRET_KEY=...
-# AUTH_PROVIDER_KEY=...
-
-# Encryption
-ENCRYPTION_KEY=...    # 64-char hex, required in production
-
-# Observability
-# GRAFANA_API_KEY=... or DATADOG_API_KEY=...
-
-# Application
-NODE_ENV=production   # or APP_ENV
-PORT=3000
+docker build -t math-solver .
+docker run --env-file .env math-solver solve --problem "..."
 ```
 
-## 5. Zero-Downtime Deployment
+## 4. CI/CD Pipeline
 
-### Strategy: Rolling Update
+```
+Push → Lint (ruff) → Type Check (mypy) → Test (pytest) → Build Check
+```
 
-1. New container starts alongside old container
-2. Health check passes on new container
-3. Traffic routes to new container
-4. Old container receives drain signal
-5. Old container shuts down after in-flight requests complete
+- Runs on every push to `dev` and PR to `main`
+- No deployment stage (CLI tool — users install locally)
+- Failed checks block merge
 
-### Rollback
+## 5. Dependencies
 
-- One-click rollback in deployment platform
-- Or: `docker tag registry/app:{previous-sha} registry/app:latest && deploy`
-- Database rollbacks are separate (use migration rollbacks)
+Managed in `pyproject.toml`:
 
-## 6. Infrastructure as Code
+```toml
+[project]
+dependencies = [
+    "anthropic>=0.40",
+    "sympy>=1.13",
+    "numpy>=2.0",
+    "structlog>=24.0",
+    "pydantic-settings>=2.0",
+    "click>=8.0",
+]
 
-<!-- CUSTOMIZE: Choose your IaC tool. -->
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "hypothesis>=6.0",
+    "pytest-mock>=3.0",
+    "mypy>=1.10",
+    "ruff>=0.5",
+]
+```
 
-All cloud resources defined in code (Terraform, Pulumi, CDK):
-- Compute (containers, functions)
-- Database (provisioning, backups)
-- Networking (load balancer, DNS)
-- Monitoring (alerts, dashboards)
-- IAM (roles, permissions)
+## 6. Cross-references
 
-No click-ops. Every infrastructure change is code-reviewed and versioned.
-
-## 7. Cross-references
-
-- **[CONSTRAINTS.md](../CONSTRAINTS.md)** — Deployment conventions (§9)
-- **[design/core-architecture.md](core-architecture.md)** — Docker architecture
-- **[design/observability.md](observability.md)** — Monitoring integration
-- **[design/security.md](security.md)** — Secret management details
+- Config / env vars: `docs/design/config.md`
+- Core architecture: `docs/design/core-architecture.md`

@@ -3,7 +3,7 @@
 > Extracted from `HARNESS.md` §1 and `CONSTRAINTS.md` "Why" / "Rationale" sections.
 > These are the stable "why" statements that drive the "what" in design docs and the "how" in constraints. When a principle and a specific rule disagree, prefer the rule (the rule is the canonical *how*); update the principle in the next harness-review pass.
 >
-> <!-- CUSTOMIZE: This file is scaffolded with the harness's universal principles. Add project-specific principles, drop the ones that don't apply to your stack, and rephrase the Code Quality and Product Quality sections to fit your team's voice. -->
+> Tailored for Math Solution Finder — a Python CLI tool for agentic math problem solving.
 
 ---
 
@@ -69,7 +69,7 @@ Every change should reduce system complexity, not add to it. When in doubt, remo
 
 ## Operational Resilience
 
-<!-- CUSTOMIZE: The principles below are universal in spirit, but the *tooling* they invoke varies by language and security posture. The harness recommends the strictest available option for the chosen stack; replace `mypy / pyright / strict TypeScript / golangci-lint` with whatever fits, and pick concrete validation/auth/secret libraries in your CONSTRAINTS.md §1 and §6. -->
+Tooling: Python 3.12+ with `mypy --strict`, `ruff` for linting/formatting, `pydantic-settings` for config validation.
 
 **P12. Static types over runtime checks**
 Invalid states should be unrepresentable in the type system, not caught by tests at runtime. Types are executable documentation that never drift from the implementation. Tooling is chosen per-project based on language and industry standards (e.g., TypeScript strict mode, mypy, pyright, golangci-lint); the harness recommends the strictest available option.
@@ -79,41 +79,33 @@ Invalid states should be unrepresentable in the type system, not caught by tests
 Invalid input is rejected immediately with a clear, actionable error. Programmer errors (null derefs, type mismatches) crash loudly in development. User-facing operations degrade gracefully — never expose internal stack traces or implementation details.
 > Source: HARNESS.md §8.3 (input validation), CONSTRAINTS.md §6.3 (input security), CONSTRAINTS.md §5.4 (no silent catches)
 
-**P14. Security by default**
-Every endpoint requires authentication unless explicitly declared public. Every secret is environment-scoped and rotatable without a deploy. Input is validated at the outermost boundary, not deep in business logic.
-> Source: HARNESS.md §1 "Security & Privacy", CONSTRAINTS.md §6.1 (auth required unless public), CONSTRAINTS.md §6.4 (secret management)
-
-**P15. Zero cross-user data leakage**
-Data privacy is absolute. Every database query that touches user data must be scoped to the authenticated user's tenant/organization. On ambiguity, show nothing — never show the wrong user's data.
-> Source: HARNESS.md §1 "Security & Privacy", CONSTRAINTS.md §6.2
+**P14. API key protection**
+The ANTHROPIC_API_KEY is the only secret. It is loaded from `.env` (gitignored), never logged, never written to convergence logs or research archives.
+> Source: CONSTRAINTS.md §6.4 (secret management)
 
 ---
 
 ## Code Quality
 
-<!-- CUSTOMIZE: Rephrase the body below to fit your team's voice. Keep the spirit. -->
-
-**P16. Code is written for the next reader**
-Simple over clever. Explicit over implicit. Small functions. Obvious naming. No dead code. Every file should be understandable in isolation within 30 seconds.
+**P15. Code is written for the next reader**
+Simple over clever. Explicit over implicit. Small functions. Obvious naming. No dead code. Math code especially benefits from clear variable names — prefer `discriminant` over `d`.
 > Source: HARNESS.md §1 "Clean, Clear Code"
 
 ---
 
 ## Product Quality
 
-<!-- CUSTOMIZE: These four principles assume a user-facing product. If your project is purely internal tooling or infrastructure, edit P17-P19 to fit (or drop them). -->
+**P16. Observable via logs**
+Every solver iteration is logged with structured context (structlog JSON on stderr). Every approach path is recorded in convergence logs. The `report` command provides post-hoc analysis without needing to re-run.
+> Source: CONSTRAINTS.md §5
 
-**P17. Observable without SSH**
-Every error is logged with structured context. Every slow path is measurable. Alerts fire before users notice. Dashboards tell the story without code spelunking.
-> Source: HARNESS.md §1 "Reliability & Observability", CONSTRAINTS.md §5
+**P17. Convergence is the metric**
+The solver's goal is convergence toward a solution. Every iteration must advance understanding — either by finding progress or eliminating a dead end. Both outcomes are valuable and tracked.
+> Source: docs/design/convergence-tracking.md
 
-**P18. Immediate accessibility**
-Users should be productive from their first interaction with zero training or setup friction. Defaults are smart. Help is contextual, not manual-driven.
-> Source: HARNESS.md §1 "Immediate Accessibility"
-
-**P19. Time-to-value**
-The gap between "I need something" and "I have a useful result" should be as short as possible. Fast responses for quick tasks. Deep processing when depth is needed. No unnecessary steps between the user and value.
-> Source: HARNESS.md §1 "Time-to-Value"
+**P18. Reproducibility**
+Convergence logs are repo-tracked so any solver run can be analyzed, compared, or resumed. Research archives capture the reasoning at each step.
+> Source: docs/design/convergence-tracking.md §6
 
 ---
 
