@@ -132,3 +132,35 @@ created: 2026-05-26
 ---
 
 Lean 4 formal verification for math domain
+
+---
+id: dc0308ce36d399
+title: Cross-strategy synthesizer for parallel orchestrate findings
+source-path: inline:build-discover-skill-in-repo
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When orchestrate used for 2+ parallel discovery runs
+created: 2026-05-26
+---
+
+Cross-strategy synthesizer for parallel orchestrate findings
+
+---
+id: d30c80ae165926
+title: Domain adapters for life science, business, robotics
+source-path: inline:build-discover-skill-in-repo
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When math domain discovery loop has completed 3+ full iterations
+created: 2026-05-26
+---
+
+Domain adapters for life science, business, robotics

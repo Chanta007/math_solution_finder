@@ -55,12 +55,28 @@ Each solver iteration is a harness cycle:
 - **Orchestration issue tracking**: Log autonomy blockers to `docs/orchestration-issues.md`
 - **No API key needed**: Claude Code provides the intelligence; `scripts/` provides computation
 
+### Discovery Framework (Hybrid Pattern)
+
+For theory discovery across any domain, follow `skill/discover/SKILL.md`. The hybrid pattern: Claude reasons (heuristics, interpretation, synthesis), Python scripts do mechanical I/O (metrics, file read/write, schema validation).
+
+**Start a discovery session:**
+```
+Follow skill/discover/SKILL.md
+```
+
+**Check convergence metrics**: `python scripts/convergence_scorer.py --log docs/convergence/`
+**View theory state**: `python scripts/theory_state.py show`
+**Update theory**: `python scripts/theory_state.py update --confidence 0.5 --findings "..."`
+
 ### Computation Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/erdos_straus.py` | Find x,y,z satisfying 4/n = 1/x + 1/y + 1/z |
-| `scripts/log_convergence.py` | Append JSONL convergence entry |
+| Script | Purpose | Role |
+|--------|---------|------|
+| `scripts/erdos_straus.py` | Find/verify 4/n = 1/x + 1/y + 1/z | Domain computation |
+| `scripts/verify_proof.py` | Verify algebraic identities, residue analysis | Domain computation |
+| `scripts/log_convergence.py` | Append JSONL convergence entry | Mechanical I/O |
+| `scripts/convergence_scorer.py` | Compute convergence metrics from JSONL | Mechanical scoring (no decisions) |
+| `scripts/theory_state.py` | Read/write/validate theory-state.json | Mechanical I/O (no synthesis) |
 
 Run scripts via subagent to preserve main context:
 ```
@@ -85,7 +101,7 @@ Parallel solver agents can be dispatched via `/mindcoachlabs:orchestrate`. Defer
 
 ### Task Navigation
 
-| I want to... | Read |
+| I want to... | Read/Do |
 |--------------|------|
 | Add a new solver strategy | `plans/add-feature.md` then `design/core-architecture.md` |
 | Add test coverage | `plans/add-test.md` then `design/testing.md` |
@@ -101,6 +117,9 @@ Parallel solver agents can be dispatched via `/mindcoachlabs:orchestrate`. Defer
 | Diagnose harness issues | `/mindcoachlabs:health-check` or `/mindcoachlabs:health-check --fix` |
 | Run parallel solver agents | `/mindcoachlabs:orchestrate` |
 | Review deferred approaches | `/mindcoachlabs:triage` |
+| **Run a discovery iteration** | **`skill/discover/SKILL.md`** |
+| Check convergence metrics | `python scripts/convergence_scorer.py --log docs/convergence/` |
+| View/update theory state | `python scripts/theory_state.py show` / `update` |
 
 ### Source File to Design Doc Mapping
 

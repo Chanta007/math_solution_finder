@@ -1,0 +1,40 @@
+{
+  "problem": "Erdős–Straus conjecture",
+  "domain": "math",
+  "current_theory": "New finding",
+  "confidence": 0.6,
+  "evidence": [
+    {
+      "source": "test-paper",
+      "type": "supports",
+      "summary": "Confirms X",
+      "iteration": 2,
+      "timestamp": "2026-05-26T17:39:56.916870+00:00"
+    },
+    {
+      "source": "test-paper",
+      "type": "supports",
+      "summary": "Confirms X",
+      "iteration": 3,
+      "timestamp": "2026-05-26T17:40:02.021108+00:00"
+    }
+  ],
+  "approaches_tried": [
+    "proof-by-residue-cases",
+    "new-approach"
+  ],
+  "dead_ends": [
+    {
+      "approach": "bad-idea",
+      "reason": "Doesn't work because Y",
+      "iteration": 2
+    },
+    {
+      "approach": "bad-idea",
+      "reason": "Doesn't work because Y",
+      "iteration": 3
+    }
+  ],
+  "iteration": 3,
+  "last_updated": "2026-05-26T17:40:02.109093+00:00"
+}
