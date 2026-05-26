@@ -47,10 +47,21 @@ Defines the Polya-Hadamard theory discovery framework — a domain-agnostic skil
 
 | Hadamard Stage | What Claude Does (SKILL.md) | What Python Does (scripts/) | Harness Skill |
 |---|---|---|---|
-| **Preparation** | Applies Polya heuristics (7 questions), reads theory state, identifies gaps | `convergence_scorer.py` computes metrics, `theory_state.py show` loads state | `/mindcoachlabs:research` |
-| **Incubation** | Generates 2-5 candidate approaches using 10 Polya heuristics | None (this is pure reasoning) | `/mindcoachlabs:orchestrate` |
-| **Illumination** | Selects best approach, formalizes into a testable plan | Domain scripts written on demand | `/mindcoachlabs:plan auto` |
-| **Verification** | Interprets convergence scores, decides continue/pivot/stop | `log_convergence.py` writes JSONL, `convergence_scorer.py` computes metrics | `/mindcoachlabs:build` + `/mindcoachlabs:verify` |
+| **Preparation** | Applies Polya heuristics (7 questions), reads theory state, identifies gaps | `convergence_scorer.py` computes metrics, `theory_state.py show` loads state | `/mindcoachlabs:research` | `docs/convergence/prep-<run_id>.md` |
+| **Incubation** | Generates 2-5 candidate approaches using 10 Polya heuristics; writes heuristic checklist | None (this is pure reasoning) | `/mindcoachlabs:orchestrate` | `docs/convergence/heuristics-<run_id>.md` |
+| **Illumination** | Selects best approach, formalizes into testable plan; may escalate to building deliverables | Domain scripts written on demand | `/mindcoachlabs:plan auto` | Plan archive + optional deliverables |
+| **Verification** | Interprets convergence scores, decides continue/pivot/stop; validates theory state | `log_convergence.py` writes JSONL, `convergence_scorer.py --validate` checks state | `/mindcoachlabs:build` + `/mindcoachlabs:verify` | Convergence JSONL entry |
+
+### Evaluation-Driven Improvements (v2, 2026-05-26)
+
+Based on 4 test runs (Erdős–Straus iter1/iter2, sqrt(2), ai_gateway GTM):
+
+1. **Persistent artifacts**: Stages 1-2 now write files (`prep-*.md`, `heuristics-*.md`) instead of ephemeral response text
+2. **Heuristic checklist gate**: All 10 incubation heuristics must be documented before Stage 3
+3. **Theory-state validation**: Loop Control checks for placeholder data after each update
+4. **Iteration count sync**: Pre-update check ensures theory-state matches convergence log
+5. **Clean-run logging**: Orchestration issues log requires entries even for clean runs
+6. **Deliverable escalation**: Stage 3 can produce working deliverables (landing pages, scripts, protocols) — not just analysis
 
 ## 5. Convergence Scorer Schema
 

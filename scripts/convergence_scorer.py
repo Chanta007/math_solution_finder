@@ -76,16 +76,59 @@ def compute_metrics(entries: list[dict], window: int = 3) -> dict:
     }
 
 
+PLACEHOLDER_PATTERNS = ["test-paper", "Confirms X", "bad-idea", "Doesn't work because Y"]
+
+
+def validate_theory_state(log_entries: list[dict]) -> dict:
+    """Check theory-state.json for placeholder data and iteration mismatches."""
+    state_file = Path("docs/theory-state.json")
+    if not state_file.exists():
+        return {"valid": True, "issues": ["theory-state.json not found (skip validation)"]}
+
+    state = json.loads(state_file.read_text(encoding="utf-8"))
+    issues = []
+
+    for ev in state.get("evidence", []):
+        for field in ("source", "summary"):
+            val = ev.get(field, "")
+            for pattern in PLACEHOLDER_PATTERNS:
+                if pattern.lower() in val.lower():
+                    issues.append(f"placeholder evidence: '{val}' matches '{pattern}'")
+
+    for de in state.get("dead_ends", []):
+        for field in ("approach", "reason"):
+            val = de.get(field, "")
+            for pattern in PLACEHOLDER_PATTERNS:
+                if pattern.lower() in val.lower():
+                    issues.append(f"placeholder dead_end: '{val}' matches '{pattern}'")
+
+    if not state.get("current_theory", "").strip():
+        issues.append("current_theory is empty")
+
+    state_iter = state.get("iteration", 0)
+    log_count = len(log_entries)
+    if log_count > 0 and state_iter > 0 and abs(state_iter - log_count) > 1:
+        issues.append(f"iteration mismatch: theory-state={state_iter}, convergence_log={log_count}")
+
+    return {"valid": len(issues) == 0, "issues": issues}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Compute convergence metrics from JSONL logs (no decisions — metrics only)"
     )
     parser.add_argument("--log", required=True, help="Path to JSONL file or directory")
     parser.add_argument("--window", type=int, default=3, help="Plateau detection window")
+    parser.add_argument("--validate", action="store_true",
+                        help="Also validate theory-state.json for placeholder entries")
 
     args = parser.parse_args(argv)
     entries = load_entries(args.log)
     metrics = compute_metrics(entries, args.window)
+
+    if args.validate:
+        metrics["validation"] = validate_theory_state(entries)
+
     print(json.dumps(metrics, indent=2))
     return 0
 

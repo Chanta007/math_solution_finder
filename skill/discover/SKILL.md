@@ -42,11 +42,13 @@ Apply these systematically — don't skip any:
 
 ### Output
 
-Write a brief preparation summary (in your response, not a file):
+**REQUIRED**: Write preparation findings to `docs/convergence/prep-<run_id>.md` (where `<run_id>` matches your convergence log run ID). Include:
 - Problem statement (formal)
 - Known results (from prior iterations + web research)
 - Gaps identified (what's unsolved, what approaches haven't been tried)
 - Proposed approach for this iteration
+
+This file is the audit trail for Stage 1. Without it, preparation is invisible.
 
 ---
 
@@ -79,6 +81,27 @@ Apply each one to the problem — the best approach often comes from an unexpect
 
 List 2-5 candidate approaches ranked by promise. For each: name, key insight, why it might work, risk of failure.
 
+### Heuristic Checklist Gate (REQUIRED before Stage 3)
+
+**MANDATORY**: Before proceeding to Stage 3, write a heuristic checklist to `docs/convergence/heuristics-<run_id>.md`:
+
+```markdown
+| # | Heuristic | Applied? | Result / Justification |
+|---|-----------|----------|----------------------|
+| 1 | Solve a simpler version | Yes/No | ... |
+| 2 | Solve a related problem | Yes/No | ... |
+| 3 | Use analogy | Yes/No | ... |
+| 4 | Generalize | Yes/No | ... |
+| 5 | Specialize | Yes/No | ... |
+| 6 | Work backward | Yes/No | ... |
+| 7 | Decompose the problem | Yes/No | ... |
+| 8 | Vary the problem | Yes/No | ... |
+| 9 | What would make this trivial? | Yes/No | ... |
+| 10 | Look for patterns | Yes/No | ... |
+```
+
+All 10 heuristics must have an entry. Skipped heuristics need a justification (e.g., "not applicable to this domain" or "already addressed in Stage 1"). Do NOT proceed to Stage 3 without this file.
+
 ---
 
 ## Stage 3 — Illumination (Hadamard: "the flash of insight / synthesis")
@@ -104,6 +127,19 @@ A concrete approach with:
 - The key identity/theorem/formula being tested
 - How to verify it (which scripts to run, what output to check)
 - What "success" looks like (specific criteria, not "it works")
+
+### Deliverable Escalation (optional)
+
+When the approach produces actionable output beyond analysis, Stage 3 can escalate to building a working deliverable via `/mindcoachlabs:plan auto`. This is intentional — the discovery skill can produce tangible artifacts, not just insights.
+
+| Domain | Deliverable Examples |
+|--------|---------------------|
+| **Mathematics** | Verification scripts, proof documents, computational results |
+| **Business** | Landing pages, pitch decks, marketing campaigns, financial models |
+| **Science** | Experiment protocols, grant proposals, data analysis pipelines |
+| **Engineering** | Prototypes, specifications, simulation scripts |
+
+The harness workflow (plan → build → verify) handles the escalation naturally. Don't hold back from producing deliverables when the discovery process leads there.
 
 ---
 
@@ -148,14 +184,31 @@ Convergence entry logged. Assessment of whether to continue, pivot, or stop — 
 
 After Stage 4, decide the next action:
 
-1. **Update theory state**: `python scripts/theory_state.py update --confidence <X> --findings "..." --approach "..."`.
-2. **Evaluate**:
+1. **Iteration count sync check (REQUIRED)**: Before updating theory state, verify: count the entries in your convergence JSONL file and compare to `theory-state.json` iteration count. If they diverge (e.g., theory-state shows iteration 6 but only 2 JSONL entries exist), investigate before proceeding — this indicates prior runs wrote test data.
+
+2. **Update theory state**: `python scripts/theory_state.py update --confidence <X> --findings "..." --approach "..."`.
+
+3. **Theory-state validation (REQUIRED)**: After updating, run `python scripts/theory_state.py show` and verify:
+   - Evidence entries contain REAL findings — not placeholders like "test-paper", "Confirms X", "bad-idea", or "Doesn't work because Y"
+   - `current_theory` describes actual domain-specific findings, not template text
+   - If placeholders are detected, re-run `theory_state.py update` with real data before continuing
+   - You can also run `python scripts/convergence_scorer.py --validate --log docs/convergence/` for automated placeholder detection
+
+4. **Evaluate**:
    - If **solved** (verified independently): STOP. Write final results. Celebrate.
    - If **progress** (confidence rising): return to **Stage 3** with refined approach.
    - If **plateau** (confidence flat): return to **Stage 2** with different heuristics.
    - If **dead end** (confidence falling): return to **Stage 1** to reframe the problem.
    - If **iteration limit** (per convergence scorer): STOP. Summarize what was learned. Park remaining approaches via `/mindcoachlabs:triage`.
-3. **Log orchestration issues**: If anything blocked autonomous execution (permission prompts, tool failures, context overflow), log to `docs/orchestration-issues.md`.
+
+5. **Log orchestration issues (REQUIRED — even for clean runs)**: If issues occurred, log them to `docs/orchestration-issues.md` with full schema. If NO issues occurred, append a clean-run entry:
+   ```markdown
+   ### OI-NNN: Clean run — YYYY-MM-DD
+   - **Type**: clean-run
+   - **Impact**: none
+   - **Description**: Iteration completed without orchestration issues
+   ```
+   This distinguishes "no issues" from "forgot to log issues."
 
 ---
 
