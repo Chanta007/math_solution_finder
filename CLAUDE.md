@@ -36,12 +36,36 @@ ruff format .
 
 ## Architecture Overview
 
-Math Solution Finder is a Python CLI tool that agentically searches for solutions to unsolved math problems. It uses iterative solve loops where each iteration:
-1. Analyzes the problem and prior attempts via `/mindcoachlabs:research`
-2. Generates a new approach via Claude API
-3. Tests the approach symbolically (sympy) and numerically (numpy)
-4. Records results to the convergence log
-5. Feeds findings back into the next iteration
+Math Solution Finder uses **Claude Code + MindCoachLabs harness** as the agentic solver — no external API keys needed. Claude Code IS the reasoning engine; Python scripts handle computation.
+
+### Solver Workflow (Harness-as-Solver)
+
+Each solver iteration is a harness cycle:
+
+1. **Research** — `/mindcoachlabs:research <approach>` analyzes the problem, identifies strategies
+2. **Plan + Build** — `/mindcoachlabs:plan auto` writes a Python computation script, runs it via subagent, evaluates results
+3. **Log convergence** — `python scripts/log_convergence.py` appends JSONL to `docs/convergence/`
+4. **Triage dead ends** — `/mindcoachlabs:triage` reviews deferred approaches in `docs/deferred/index.md`
+5. **Repeat** — findings feed into the next `/mindcoachlabs:research` iteration
+
+**Key principles:**
+- **Subagents for computation**: Use the `Agent` tool to run Python scripts, keeping the main context window clean for reasoning and strategy
+- **Parallel exploration**: `/mindcoachlabs:orchestrate` fans out approaches across worktrees
+- **Convergence tracking**: Append-only JSONL in `docs/convergence/` (see `docs/design/convergence-tracking.md`)
+- **Orchestration issue tracking**: Log autonomy blockers to `docs/orchestration-issues.md`
+- **No API key needed**: Claude Code provides the intelligence; `scripts/` provides computation
+
+### Computation Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/erdos_straus.py` | Find x,y,z satisfying 4/n = 1/x + 1/y + 1/z |
+| `scripts/log_convergence.py` | Append JSONL convergence entry |
+
+Run scripts via subagent to preserve main context:
+```
+Agent({ prompt: "Run python3 scripts/erdos_straus.py range 2 1000 and summarize" })
+```
 
 Parallel solver agents can be dispatched via `/mindcoachlabs:orchestrate`. Deferred approaches and dead-end paths are tracked via `/mindcoachlabs:triage` + `docs/deferred/index.md`.
 

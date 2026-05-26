@@ -18,3 +18,69 @@ Each item follows:
 ---
 
 <!-- Items below this line are managed by /mindcoachlabs:triage -->
+
+<!-- ENTRIES BELOW -->
+
+---
+id: 7955b0a83bf1d5
+title: Hybrid strategy combining symbolic + numeric cross-validation
+source-path: inline:build-solver-engine-3-problems
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When basic symbolic and numeric strategies are working and tested
+created: 2026-05-26
+---
+
+Hybrid strategy combining symbolic + numeric cross-validation
+
+---
+id: 112e9e7beb780b
+title: LLM prompt engineering per problem type
+source-path: inline:build-solver-engine-3-problems
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When first solver runs show prompt quality is the bottleneck
+created: 2026-05-26
+---
+
+LLM prompt engineering per problem type
+
+---
+id: d3de56857f1532
+title: Collatz + Goldbach computation scripts
+source-path: inline:harness-as-math-solver
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When Erdős–Straus iteration loop is working and convergence tracking is validated
+created: 2026-05-26
+---
+
+Collatz + Goldbach computation scripts
+
+---
+id: 16f67cc33f8e54
+title: Automated solver loop scheduling via /loop or /schedule
+source-path: inline:harness-as-math-solver
+source-section: inline capture 2026-05-26
+status: open
+priority: medium
+i: 3
+c: 3
+e: 3
+revisit-when: When manual harness-loop iterations demonstrate the workflow works end-to-end
+created: 2026-05-26
+---
+
+Automated solver loop scheduling via /loop or /schedule
