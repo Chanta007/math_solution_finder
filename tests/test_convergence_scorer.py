@@ -74,6 +74,20 @@ def test_existing_log():
     assert out["latest_strategy"] == "proof-by-residue-cases"
 
 
+def test_validate_detects_placeholders():
+    """--validate catches placeholder entries in theory-state.json."""
+    code, out = run_scorer("--validate", "--log", "docs/convergence/")
+    assert "validation" in out
+    assert out["validation"]["valid"] is False
+    assert any("placeholder" in i for i in out["validation"]["issues"])
+
+
+def test_validate_not_present_without_flag():
+    """Without --validate, no validation key appears."""
+    _, out = run_scorer("--log", "docs/convergence/")
+    assert "validation" not in out
+
+
 def test_directory_scan():
     code, out = run_scorer("--log", "docs/convergence/")
     assert code == 0
